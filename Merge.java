@@ -7,13 +7,9 @@ package merge;
  */
 
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.apache.log4j.BasicConfigurator;
 
 /**
  *
@@ -22,10 +18,14 @@ import java.util.logging.Logger;
 public class Merge {
 
     public static void main(String[] args) throws FileNotFoundException {
+        BasicConfigurator.configure();
         utils u = new utils();
-        String[] baseline310 = u.readFile("baseline310.java");
-        String[] nyc310 = u.readFile("nyc310.java");
-        String[] baseline311 = u.readFile("baseline311.java");
+        ArrayList<String> baseline310= new ArrayList<String>();
+        ArrayList<String> nyc310= new ArrayList<String>();
+        ArrayList<String> baseline311= new ArrayList<String>();
+        baseline310 = u.readFile("baseline310.java");
+        nyc310 = u.readFile("nyc310.java");
+        baseline311 = u.readFile("baseline311.java");
         u.utils();
         u.compareFiles(baseline310, nyc310, baseline311);
         System.out.println(u.merged.toString());

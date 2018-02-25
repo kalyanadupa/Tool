@@ -8,18 +8,17 @@ package merge;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import org.apache.log4j.*;
 
 /**
  *
  * @author aadupa
  */
 public class utils {
+    private static org.apache.log4j.Logger log = Logger.getLogger(utils.class);
+    
 
     StringBuilder diffRemoved, diffAdded, diffModified;
     StringBuilder merged;
@@ -38,77 +37,111 @@ public class utils {
         diffModified = new StringBuilder();
     }
 
-    public String[] readFile(String fileName) throws FileNotFoundException {
+    public ArrayList<String> readFile(String fileName) throws FileNotFoundException {
         Scanner sc = new Scanner(new File(fileName));
-        List<String> lines = new ArrayList<String>();
+        ArrayList<String> lines = new ArrayList<String>();
         while (sc.hasNextLine()) {
             lines.add(sc.nextLine());
         }
 
-        String[] arr = lines.toArray(new String[0]);
-        return arr;
+        
+        return lines;
     }
 
     /*
     compares two String arrays and writes the output merge into Merged List
      */
-    void compareFiles(String[] b310, String[] n310, String[] b311) {
+    void compareFiles(ArrayList<String> b310, ArrayList<String> n310, ArrayList<String> b311) {
+        log.setLevel(Level.TRACE);
         reInitialize();
         int b310Index = 0;
         int n310Index = 0;
         int b311Index = 0;
         int[] indexes = null;
-        int b310Length = b310.length;
-        int n310Length = n310.length;
-        int b311Length = b311.length;
-
+        int b310Length = b310.size();
+        int n310Length = n310.size();
+        int b311Length = b311.size();
+        int stb310 = 0; // startb310 Index
+        int stn310 = 0;
+        int stb311 = 0;
+        
         //The following loop runs for all the lines in both arrays simultaneously
         while ((b310Index < b310Length) && (n310Index < n310Length) && (b311Index < b311Length)) {
             // If the lines compared are same, it writes them in merged List
             if ( (b310[b310Index].replaceAll("\\s+", "").equals(n310[n310Index].replaceAll("\\s+", ""))) && (b311[b311Index].replaceAll("\\s+", "").equals(b310[b310Index].replaceAll("\\s+", "")) ) ) {
+                // 111
+                log.trace("111:\t"+ b310[b310Index]);
                 merged.append(b310[b310Index] + "\n");
                 b310Index++;
                 n310Index++;
                 b311Index++;
             }
             else if ((b310[b310Index].replaceAll("\\s+", "").equals(n310[n310Index].replaceAll("\\s+", ""))) && (!(b311[b311Index].replaceAll("\\s+", "").equals(b310[b310Index].replaceAll("\\s+", ""))))) {
+                //it is either 110 or 001
+                log.trace("\"110 or 001\" b310: "+b310[b310Index]);
+                log.trace("\"110 or 001\" n310: "+n310[n310Index]);
+                log.trace("\"110 or 001\" b311: "+b311[b311Index]);
+                stb310 = b310Index;
+                stn310 = n310Index;
+                stb311 = b311Index;
                 reInitialize();
-                int startb310Index = b310Index;
-                int startn310Index = n310Index;
-                while (b310[b310Index].replaceAll("\\s+", "").equals(n310[n310Index].replaceAll("\\s+", ""))) {
-                    b310Index++;
-                    n310Index++;
-                    if((b310Index < b310.length) || (n310Index < n310.length)){
-                        break;
-                    }
-                }
-                indexes = analyze(b310, startb310Index, b311, b311Index,b310Index+1);
-                n310Index = startn310Index + (indexes[0] - startb310Index);
-                b310Index = indexes[0];
-                b311Index = indexes[1];
-                if(!diffAdded.toString().equals("")){
+                indexes = analyze(b310, b310Index, b311,b311Index);
+                if (!diffAdded.toString().equals("")) {
                     merged.append(diffAdded);
                 }
-                else if(!diffModified.toString().equals("")){
-                        merged.append(diffModified);
-                    }
+                b310Index = indexes[0];
+                b311Index = indexes[1];
+                n310Index = stn310 + (b310Index-stb310);
             }
-            else {
+            else if ((b310[b310Index].replaceAll("\\s+", "").equals(b311[b311Index].replaceAll("\\s+", ""))) && (!(b310[b310Index].replaceAll("\\s+", "").equals(n310[n310Index].replaceAll("\\s+", ""))))) {
+                //it is either 101 or 001
+                log.trace("\"101 or 010\" b310: "+b310[b310Index]);
+                log.trace("\"101 or 010\" n310: "+n310[n310Index]);
+                log.trace("\"101 or 010\" b311: "+b311[b311Index]);                
+                stb310 = b310Index;
+                stn310 = n310Index;
+                stb311 = b311Index;
                 reInitialize();
-                if(!(b310[b310Index].replaceAll("\\s+", "").equals(n310[n310Index].replaceAll("\\s+", "")))){
-                    indexes = analyze(b310, b310Index, n310, n310Index,b310.length);
-                    b310Index = indexes[0];
-                    n310Index = indexes[1];
-                    if(!diffAdded.toString().equals("")){
-                        merged.append(diffAdded);
-                    }
-                    else if(!diffModified.toString().equals("")){
-                        merged.append(diffModified);
-                    }
+                indexes = analyze(b310, b310Index, n310,n310Index);
+                log.trace("Added:\t"+diffAdded.toString());
+                log.trace("Removed:\t"+diffRemoved.toString());
+                if (!diffAdded.toString().equals("")) {
+                    merged.append(diffAdded);
                 }
+                b310Index = indexes[0];
+                n310Index = indexes[1];
+                b311Index = stb311 + (b310Index - stb310);
+                log.trace("After 101 "+ b310[b310Index] + "//"+b310Index);
+                log.trace("After 101 "+ n310[n310Index] + "//"+n310Index);
+                log.trace("After 101 "+ b311[b311Index] + "//"+b311Index);
+            }
+            else if ((n310[n310Index].replaceAll("\\s+", "").equals(b311[b311Index].replaceAll("\\s+", ""))) && (!(b310[b310Index].replaceAll("\\s+", "").equals(n310[n310Index].replaceAll("\\s+", ""))))) {
+                //it is either 110 or 001
+                log.trace("\"011 or 100\" b310: "+b310[b310Index]);
+                log.trace("\"011 or 100\" n310: "+n310[n310Index]);
+                log.trace("\"011 or 100\" b311: "+b311[b311Index]);                   
+                stb310 = b310Index;
+                stn310 = n310Index;
+                stb311 = b311Index;
+                reInitialize();
+                indexes = analyze(b310, b310Index, n310,n310Index);
+                if (!diffAdded.toString().equals("")) {
+                    merged.append(diffAdded);
+                }
+                b310Index = indexes[0];
+                n310Index = indexes[1];
+                b311Index = stb311 + (n310Index - stn310);
+                log.trace("After 011 "+ b310[b310Index] + "//"+b310Index);
+                log.trace("After 011 "+ n310[n310Index] + "//"+n310Index);
+                log.trace("After 011 "+ b311[b311Index] + "//"+b311Index);                
+            }
+            else{
+                log.error(b310Index + " b310: "+b310[b310Index]);
+                log.error(n310Index + "n310: "+n310[n310Index]);
+                log.error(b311Index + "b311: "+b311[b311Index]);
+                break;
             }
         }
-
         // When the baselineindex pointer is still not done but the customIndex pointer is done, it parses the rest of the file
         if (b310Index < b310Length) {
             for (int i = b310Index; i < b310Length; i++) {
@@ -121,11 +154,11 @@ public class utils {
         }
     }
 
-    int[] analyze(String[] baselineFile, int baselineIndex, String[] customizedFile, int customizedIndex, int end) {
+    int[] analyze(String[] baselineFile, int baselineIndex, String[] customizedFile, int customizedIndex) {
         int tBaselineIndex = baselineIndex;
         int tCustomizedIndex = customizedIndex;
         boolean updated = false;
-        for (int i = baselineIndex; i < end; i++) {
+        for (int i = baselineIndex; i < baselineFile.length; i++) {
             if ((baselineFile[i].replaceAll("\\s+", "")).equals(customizedFile[customizedIndex].replaceAll("\\s+", ""))) {
                 tBaselineIndex = i;
 
